@@ -3,8 +3,8 @@ import numpy as np
 import plotly.express as px
 
 # archivo para procesamiento, lectura y filtrado de dataframes
-members=[{"name": "Integrante 1"},
-         {"name":"Integrante 2"},{"name":"Integrante 3"},{"name":"Integrante 4"}]
+members=[{"name": "Alisson Monserratte López Mejía"},
+         {"name":"Diana Carolina Ortiz Pillajo"},{"name":"Maria Jose Villavicencio Proaño"},{"name":"Cristhian Nahim Cobos Morales"}]
 
 members_col=[{"name":"Nombre", "id":"name"}]
 
@@ -15,7 +15,6 @@ def read_documents():
     df['Hour of Day'] = df['Appt Start Time'].dt.hour
     df['Date'] = df['Appt Start Time'].dt.date
     df['Date'] = pd.to_datetime(df['Date'])
-    # agregar tratamiento de datos
     return df
 
 def card_information(df):
