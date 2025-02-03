@@ -24,7 +24,7 @@ app.layout = html.Div([
         ]),
         dbc.Row([
             dbc.Col(html.P("""El presenta dashboard está orientado al estudio de los datos históricos de visitas en diferentes hospitales y sus respetivos departamentos. 
-                           Específcamente, nos enfocamos optimizar los tiempos de respuesta y mejora de la satisfacción de los usuarios.""",
+                           Específcamente, nos enfocamos optimizar los tiempos de respuesta y mejora de la satisfacción de los usuarios. Se tienen establecidas por defecto todas las fechas presentes en los datos. Por favor, ten paciencia al momento de realizar un cambio en los filtros (la latencia es de aproximadamente 7 segundos).""",
                            className="text-center"))
         ]),
         dbc.Row([
@@ -121,38 +121,59 @@ app.layout = html.Div([
 ])
 
 @app.callback(
-    [Output('heatmap-graph', 'figure'),
-    Output('total-patients-graph', 'figure'),
-    Output('average-rating-graph', 'figure'),
-    Output('average-wait-time-graph', 'figure'),
-    Output('total-patients-kpi', 'children'),
-    Output('average-rating-kpi', 'children'),
-    Output('average-wait-time-kpi', 'children')
-     ],
-    [Input('clinic-dropdown', 'value'),
-     Input('department-dropdown', 'value'),
-     Input('date-picker-range', 'start_date'),
-     Input('date-picker-range', 'end_date')]
+    [
+        Output('heatmap-graph', 'figure'),
+        Output('total-patients-graph', 'figure'),
+        Output('average-rating-graph', 'figure'),
+        Output('average-wait-time-graph', 'figure'),
+        Output('total-patients-kpi', 'children'),
+        Output('average-rating-kpi', 'children'),
+        Output('average-wait-time-kpi', 'children')
+    ],
+    [
+        Input('clinic-dropdown', 'value'),
+        Input('department-dropdown', 'value'),
+        Input('date-picker-range', 'start_date'),
+        Input('date-picker-range', 'end_date')
+    ]
 )
 def update_graphs(selected_clinics, selected_departments, start_date, end_date):
     if not selected_clinics or not selected_departments or not start_date or not end_date:
-        
-        return [{}]
-    filtered_df = df[(df['Clinic Name'].isin(selected_clinics)) & (df['Department'].isin(selected_departments)) &
-                     (df['Appt Start Time'] >= pd.to_datetime(start_date)) & (df['Appt Start Time'] <= pd.to_datetime(end_date))]
-    df_daily = filtered_df.groupby('Date').agg(
-    Total_Patients=pd.NamedAgg(column='Number of Records', aggfunc='size'),
-    Avg_Care_Score=pd.NamedAgg(column='Care Score', aggfunc='mean'),
-    Avg_Wait_Time=pd.NamedAgg(column='Wait Time Min', aggfunc='mean')).reset_index()
+        return [{}] * 7  
 
+    filtered_df = df[
+        (df['Clinic Name'].isin(selected_clinics)) & 
+        (df['Department'].isin(selected_departments)) &
+        (df['Appt Start Time'] >= pd.to_datetime(start_date)) & 
+        (df['Appt Start Time'] <= pd.to_datetime(end_date))
+    ]
+
+    if filtered_df.empty:
+        empty_fig = go.Figure()  
+        return [empty_fig, empty_fig, empty_fig, empty_fig, "0 pacientes", "N/A", "N/A minutos"]
+
+    df_daily = filtered_df.groupby('Date').agg(
+        Total_Patients=pd.NamedAgg(column='Number of Records', aggfunc='size'),
+        Avg_Care_Score=pd.NamedAgg(column='Care Score', aggfunc='mean'),
+        Avg_Wait_Time=pd.NamedAgg(column='Wait Time Min', aggfunc='mean')
+    ).reset_index()
     heatmap_fig = create_heatmap(filtered_df)
     fig1 = create_total_patients_graph(df_daily)
     fig2 = create_average_rating_graph(df_daily)
     fig3 = create_average_wait_time_graph(df_daily)
+
+    fig1.update_layout(hovermode='x unified')
+    fig2.update_layout(hovermode='x unified')
+    fig3.update_layout(hovermode='x unified')
+
     total_patients = filtered_df['Number of Records'].sum()
     average_rating = filtered_df['Care Score'].mean()
     average_wait_time = filtered_df['Wait Time Min'].mean()
-    print(isinstance(selected_clinics,list))
-    return [heatmap_fig,fig1, fig2, fig3, f"{total_patients} pacientes", f"{average_rating:.2f}", f"{average_wait_time:.2f} minutos"]
+
+    total_patients_text = f"{total_patients} pacientes" if not pd.isna(total_patients) else "0 pacientes"
+    average_rating_text = f"{average_rating:.2f}" if not pd.isna(average_rating) else "N/A"
+    average_wait_time_text = f"{average_wait_time:.2f} minutos" if not pd.isna(average_wait_time) else "N/A minutos"
+
+    return [heatmap_fig, fig1, fig2, fig3, total_patients_text, average_rating_text, average_wait_time_text]
 
 app.run_server(debug=True)
